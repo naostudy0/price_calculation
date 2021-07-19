@@ -11,6 +11,5 @@
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/' , 'PriceCalculationController@showInput')->name('price_calculation.input');
+Route::post('/result', 'PriceCalculationController@showResult')->name('price_calculation.result');
