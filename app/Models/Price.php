@@ -1,10 +1,10 @@
 <?php
 
-namespace App\PriceCalculation;
+namespace App\Models;
 
 use Illuminate\Support\Facades\Config;
 
-class CalcPrice
+class Price
 {
     /**
      * 選択されたコースを設定
@@ -25,7 +25,7 @@ class CalcPrice
      * @param object $enter_datetime_immutable
      * @param object $leave_datetime_immutable
      * 
-     * @return array $price
+     * @return array
      */
     public function calcPrice($enter_datetime_immutable, $leave_datetime_immutable)
     {
@@ -36,12 +36,10 @@ class CalcPrice
         // コース料金（消費税のみ）
         $tax['course'] = $taxed_price['course'] - $non_taxed_price['course'];
 
-
         // コース終了日時を取得時に使用する、modifyメソッドの引数を取得
         $time_limit = $this->course['time_limit'];
         // コース終了日時を取得
         $this->course_limit_datetime_immutable = $enter_datetime_immutable->modify($time_limit);
-
 
         // 退店日時がコース終了日時を超えていなければ料金を返す
         if ($leave_datetime_immutable <= $this->course_limit_datetime_immutable) {
@@ -49,32 +47,11 @@ class CalcPrice
             return ['non_taxed' => $non_taxed_price, 'taxed' => $taxed_price, 'tax' => $tax];
         }
 
+        // コース終了日時から退店日時までに延長開始した日時（10分間隔）を取得
+        $date_period = $this->getDatePeriod($leave_datetime_immutable);
 
-        // 10分間隔を設定
-        $date_interval = new \DateInterval('PT10M');
-        
-        // コース終了日時から退店日時まで、10分間隔の日時を作成
-        // （作成した日時にコース終了日時は含まれるが、退店日時は含まれないので、延長開始時刻として使用）
-        $date_period = new \DatePeriod($this->course_limit_datetime_immutable, $date_interval, $leave_datetime_immutable);
-
-
-        // 深夜割増の延長回数
-        $this->extra_extension_count = 0;
-        // 通常料金の延長回数
-        $this->extension_count = 0;
-
-        // 作成した10分間隔の日時が深夜割増の時間かどうかを判定し、カウントする
-        foreach($date_period as $date_extension) {
-            
-            // 21:50:01〜23:59:59 または 0:00:00〜4:59:59に開始された10分延長の場合は、割増料金の延長回数を+1
-            if ($date_extension->format('Gis') >= 215001 || $date_extension->format('Gis') <= 45959) {
-                $this->extra_extension_count++;
-                
-                // その他の時間は通常延長料金の回数を+1
-            } else {
-                $this->extension_count++;
-            }
-        }
+        // 通常料金・割増料金それぞれ、10分延長の回数をカウント
+        $this->getExtensionCount($date_period);
 
         // configから延長料金情報を取得
         $config_extension = Config::get('price.extension');
@@ -83,11 +60,10 @@ class CalcPrice
         // 深夜割増割合
         $premium_rate = $config_extension['premium_rate'];
 
-
         // 深夜割増料金の延長料金（税抜）
-        $non_taxed_price['extension']['extra_price'] = $this->extra_extension_count * $base_price * $premium_rate;
+        $non_taxed_price['extension']['extra_price'] = $this->extension_count['extra'] * $base_price * $premium_rate;
         // 通常料金の延長料金（税抜）
-        $non_taxed_price['extension']['standard_price'] = $this->extension_count * $base_price;
+        $non_taxed_price['extension']['standard_price'] = $this->extension_count['normal'] * $base_price;
         // 延長料金合計（税抜）
         $non_taxed_price['extension']['total'] = $non_taxed_price['extension']['extra_price'] + $non_taxed_price['extension']['standard_price'];
 
@@ -99,7 +75,6 @@ class CalcPrice
             $tax['extension'][$key] = $taxed_price['extension'][$key] - $value;
         }
 
-
         // コース料金と延長料金の合計金額（税抜）
         $non_taxed_price['total'] = $non_taxed_price['course'] + $non_taxed_price['extension']['total'];
         // コース料金と延長料金の合計金額（税込）
@@ -107,11 +82,53 @@ class CalcPrice
         // 消費税の合計金額
         $tax['total'] = $tax['course'] + $tax['extension']['total'];
 
-
         // 税抜金額、税込金額、消費税を返す
         return ['non_taxed' => $non_taxed_price, 'taxed' => $taxed_price, 'tax' => $tax];
     }
 
+    /**
+     * コース終了日時から退店日時まで、10分間隔の日時を作成
+     *  
+     * @param object
+     * @return object
+     */
+    private function getDatePeriod($leave_datetime_immutable)
+    {
+        // 10分間隔を設定
+        $date_interval = new \DateInterval('PT10M');
+
+        // コース終了日時から退店日時まで、10分間隔の日時を作成
+        $date_period = new \DatePeriod($this->course_limit_datetime_immutable, $date_interval, $leave_datetime_immutable);
+
+        return $date_period;
+    }
+
+    /**
+     * 通常料金・割増料金それぞれ、10分延長の回数をカウント
+     * 
+     * @param object
+     */
+    private function getExtensionCount($date_period)
+    {
+        $this->extension_count = [
+            'normal' => 0,
+            'extra' => 0,
+        ];
+        // 作成した10分間隔の日時が深夜割増の時間かどうかを判定し、カウントする
+        foreach($date_period as $date_extension) {
+      
+            // 21:50:01〜23:59:59 または 0:00:00〜4:59:59に開始された10分延長の場合は、割増料金の延長回数を+1
+            $gis = $date_extension->format('Gis');
+            if ($gis >= 215001 || $gis <= 45959) {
+                $this->extension_count['extra']++;
+          
+            // その他の時間は通常延長料金の回数を+1
+            } else {
+                $this->extension_count['normal']++;
+            }
+        }
+        return;
+    }
 
     /**
      * 消費税込金額を計算する
@@ -141,14 +158,15 @@ class CalcPrice
         // コース終了日時
         $view_data['limit'] = $this->course_limit_datetime_immutable;
 
+        // 延長回数が設定されていなければ、コース情報のみを返す
         if(!isset($this->extension_count)){
             return $view_data;
         }
 
         // 通常料金の延長時間（分）
-        $view_data['extension']['normal'] = $this->extension_count * 10;
+        $view_data['extension']['normal'] = $this->extension_count['normal'] * 10;
         // 割増料金の延長時間（分）
-        $view_data['extension']['extra'] = $this->extra_extension_count * 10;
+        $view_data['extension']['extra'] = $this->extension_count['extra'] * 10;
         // トータルの延長時間（分）
         $view_data['extension']['total'] = $view_data['extension']['normal'] + $view_data['extension']['extra'];
 
@@ -161,7 +179,6 @@ class CalcPrice
             // 分
             $view_data['extension']['minute'][$key] = $value % 60;
         }
-
         return $view_data;
     }
 }
