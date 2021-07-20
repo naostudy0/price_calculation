@@ -10,3 +10,7 @@ td {
 td {
     text-align: right;
 }
+
+p.caution {
+    color: red;
+}
