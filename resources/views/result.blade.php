@@ -44,35 +44,35 @@
         <tbody>
             <tr>
                 <th>コース料金</th>
-                <td>{{ $price['non_taxed']['course'] }}円</td>
-                <td>{{ $price['taxed']['course'] }}円</td>
-                <td>{{ $price['tax']['course'] }}円</td>
+                <td>{{ $price['course']['non_taxed'] }}円</td>
+                <td>{{ $price['course']['taxed'] }}円</td>
+                <td>{{ $price['course']['tax'] }}円</td>
             </tr>
 
-            @if(isset($price['non_taxed']['extension']))
+            @if(isset($price['extension']['non_taxed']))
             <tr>
                 <th>延長料金</th>
-                <td>{{ $price['non_taxed']['extension']['total'] }}円</td>
-                <td>{{ $price['taxed']['extension']['total'] }}円</td>
-                <td>{{ $price['tax']['extension']['total'] }}円</td>
+                <td>{{ $price['extension']['non_taxed']['total'] }}円</td>
+                <td>{{ $price['extension']['taxed']['total'] }}円</td>
+                <td>{{ $price['extension']['tax']['total'] }}円</td>
             </tr>
             <tr>
                 <th>（通常延長料金）</th>
-                <td>({{ $price['non_taxed']['extension']['standard_price'] }}円)</td>
-                <td>({{ $price['taxed']['extension']['standard_price'] }}円)</td>
-                <td>({{ $price['tax']['extension']['standard_price'] }}円)</td>
+                <td>{{ $price['extension']['non_taxed']['normal'] }}円</td>
+                <td>{{ $price['extension']['taxed']['normal'] }}円</td>
+                <td>{{ $price['extension']['tax']['normal'] }}円</td>
             </tr>
             <tr>
                 <th>（割増延長料金）</th>
-                <td>({{ $price['non_taxed']['extension']['extra_price'] }}円)</td>
-                <td>({{ $price['taxed']['extension']['extra_price'] }}円)</td>
-                <td>({{ $price['tax']['extension']['extra_price'] }}円)</td>
+                <td>{{ $price['extension']['non_taxed']['extra'] }}円</td>
+                <td>{{ $price['extension']['taxed']['extra'] }}円</td>
+                <td>{{ $price['extension']['tax']['extra'] }}円</td>
             </tr>
             <tr>
                 <th>合計</th>
-                <td>{{ $price['non_taxed']['total'] }}円</td>
-                <td>{{ $price['taxed']['total'] }}円</td>
-                <td>{{ $price['tax']['total'] }}円</td>
+                <td>{{ $price['total']['non_taxed'] }}円</td>
+                <td>{{ $price['total']['taxed'] }}円</td>
+                <td>{{ $price['total']['tax'] }}円</td>
             </tr>
             @endif
         </tbody>

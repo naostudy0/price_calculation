@@ -29,61 +29,60 @@ class Price
      */
     public function calcPrice($enter_datetime_immutable, $leave_datetime_immutable)
     {
-        // コース料金（税抜）
-        $non_taxed_price['course'] = $this->course['price'];
-        // コース料金（税込）
-        $taxed_price['course'] = $this->getTaxedPrice($non_taxed_price['course']);
-        // コース料金（消費税のみ）
-        $tax['course'] = $taxed_price['course'] - $non_taxed_price['course'];
+        // コース料金を取得（税抜・税込・消費税）
+        $course_price = $this->calcCoursePrice();
 
         // コース終了日時を取得時に使用する、modifyメソッドの引数を取得
         $time_limit = $this->course['time_limit'];
         // コース終了日時を取得
         $this->course_limit_datetime_immutable = $enter_datetime_immutable->modify($time_limit);
-
-        // 退店日時がコース終了日時を超えていなければ料金を返す
+        
+        // 退店日時がコース終了日時を超えていなければ、コース料金（税抜金額、税込金額、消費税）を返す
         if ($leave_datetime_immutable <= $this->course_limit_datetime_immutable) {
-            // 税抜金額、税込金額、消費税
-            return ['non_taxed' => $non_taxed_price, 'taxed' => $taxed_price, 'tax' => $tax];
+            return ['course' => $course_price];
         }
 
-        // コース終了日時から退店日時までに延長開始した日時（10分間隔）を取得
-        $date_period = $this->getDatePeriod($leave_datetime_immutable);
+        // 延長料金を取得（税抜・税込・消費税）
+        $extension_price = $this->calcExtensionPrice($leave_datetime_immutable);
 
-        // 通常料金・割増料金それぞれ、10分延長の回数をカウント
-        $this->getExtensionCount($date_period);
+        // 合計金額を取得（税抜・税込・消費税）
+        $total_price = $this->calcTotalPrice($course_price, $extension_price);;
 
-        // configから延長料金情報を取得
-        $config_extension = Config::get('price.extension');
-        // 延長10分ごとの金額
-        $base_price = $config_extension['base_price'];
-        // 深夜割増割合
-        $premium_rate = $config_extension['premium_rate'];
+        // コース料金、延長料金、合計金額それぞれの税抜金額、税込金額、消費税を返す
+        return ['course' => $course_price, 'extension' => $extension_price, 'total' => $total_price];
+    }
 
-        // 深夜割増料金の延長料金（税抜）
-        $non_taxed_price['extension']['extra_price'] = $this->extension_count['extra'] * $base_price * $premium_rate;
-        // 通常料金の延長料金（税抜）
-        $non_taxed_price['extension']['standard_price'] = $this->extension_count['normal'] * $base_price;
-        // 延長料金合計（税抜）
-        $non_taxed_price['extension']['total'] = $non_taxed_price['extension']['extra_price'] + $non_taxed_price['extension']['standard_price'];
+    /**
+     * コース料金計算
+     * 
+     * @return array
+     */
+    private function calcCoursePrice()
+    {
+        // コース料金（税抜）
+        $course_price['non_taxed'] = $this->course['price'];
+        // コース料金（税込）
+        $course_price['taxed'] = $this->getTaxedPrice($course_price['non_taxed']);
+        // コース料金（消費税のみ）
+        $course_price['tax'] = $course_price['taxed'] - $course_price['non_taxed'];
 
-        foreach($non_taxed_price['extension'] as $key => $value ){
-            // 税込金額を計算
-            $taxed_price['extension'][$key] = $this->getTaxedPrice($value);
+        return $course_price;
+    }
 
-            // 消費税を計算
-            $tax['extension'][$key] = $taxed_price['extension'][$key] - $value;
-        }
+    /**
+     * 消費税込金額を計算する
+     * 
+     * @param int $non_taxed_price
+     * @return int $taxed_price
+     */
+    private function getTaxedPrice($non_taxed_price)
+    {
+        // configから消費税情報を取得
+        $config_tax = Config::get('price.tax');
+        // 消費税込金額の計算
+        $taxed_price = $non_taxed_price * $config_tax['rate'];
 
-        // コース料金と延長料金の合計金額（税抜）
-        $non_taxed_price['total'] = $non_taxed_price['course'] + $non_taxed_price['extension']['total'];
-        // コース料金と延長料金の合計金額（税込）
-        $taxed_price['total'] = $taxed_price['course'] + $taxed_price['extension']['total'];
-        // 消費税の合計金額
-        $tax['total'] = $tax['course'] + $tax['extension']['total'];
-
-        // 税抜金額、税込金額、消費税を返す
-        return ['non_taxed' => $non_taxed_price, 'taxed' => $taxed_price, 'tax' => $tax];
+        return $taxed_price;
     }
 
     /**
@@ -107,10 +106,11 @@ class Price
      * 通常料金・割増料金それぞれ、10分延長の回数をカウント
      * 
      * @param object
+     * @return array
      */
     private function getExtensionCount($date_period)
     {
-        $this->extension_count = [
+        $extension_count = [
             'normal' => 0,
             'extra' => 0,
         ];
@@ -120,30 +120,73 @@ class Price
             // 21:50:01〜23:59:59 または 0:00:00〜4:59:59に開始された10分延長の場合は、割増料金の延長回数を+1
             $gis = $date_extension->format('Gis');
             if ($gis >= 215001 || $gis <= 45959) {
-                $this->extension_count['extra']++;
+                $extension_count['extra']++;
           
             // その他の時間は通常延長料金の回数を+1
             } else {
-                $this->extension_count['normal']++;
+                $extension_count['normal']++;
             }
         }
-        return;
+        return $extension_count;
     }
 
     /**
-     * 消費税込金額を計算する
+     * 延長料金計算を計算する
      * 
-     * @param int $non_taxed_price
-     * @return int $taxed_price
+     * @param object
+     * @return array
      */
-    private function getTaxedPrice($non_taxed_price)
+    private function calcExtensionPrice($leave_datetime_immutable)
     {
-        // configから消費税情報を取得
-        $config_tax = Config::get('price.tax');
-        // 消費税込金額の計算
-        $taxed_price = $non_taxed_price * $config_tax['rate'];
+        // コース終了日時から退店日時までに延長開始した日時（10分間隔）を取得
+        $date_period = $this->getDatePeriod($leave_datetime_immutable);
 
-        return $taxed_price;
+        // 通常料金・割増料金それぞれ、10分延長の回数をカウント
+        $this->extension_count = $this->getExtensionCount($date_period);
+
+        // configから延長料金情報を取得
+        $config_extension = Config::get('price.extension');
+        // 延長10分ごとの金額
+        $base_price = $config_extension['base_price'];
+        // 深夜割増割合
+        $premium_rate = $config_extension['premium_rate'];
+        
+        // 深夜割増料金の延長料金（税抜）
+        $extension_price['non_taxed']['extra'] = $this->extension_count['extra'] * $base_price * $premium_rate;
+        // 通常料金の延長料金（税抜）
+        $extension_price['non_taxed']['normal'] = $this->extension_count['normal'] * $base_price;
+        // 延長料金合計（税抜）
+        $extension_price['non_taxed']['total'] = $extension_price['non_taxed']['extra'] + $extension_price['non_taxed']['normal'];
+        
+        foreach($extension_price['non_taxed'] as $key => $value ){
+            // 税込金額を計算
+            $extension_price['taxed'][$key] = $this->getTaxedPrice($value);
+
+            // 消費税を計算
+            $extension_price['tax'][$key] = $extension_price['taxed'][$key] - $value;
+        }
+        
+        return $extension_price;
+    }
+
+    /**
+     * コース料金と延長料金の合計を計算する
+     * 
+     * @param array $course_price
+     * @param array $extension_price
+     * 
+     * @return array
+     */
+    private function calcTotalPrice($course_price, $extension_price)
+    {
+        // コース料金と延長料金の合計金額（税抜）
+        $price['non_taxed'] = $course_price['non_taxed'] + $extension_price['non_taxed']['total'];
+        // コース料金と延長料金の合計金額（税込）
+        $price['taxed'] = $course_price['taxed'] + $extension_price['taxed']['total'];
+        // 消費税の合計金額
+        $price['tax'] = $course_price['tax'] + $extension_price['tax']['total'];
+
+        return $price;
     }
 
     /**

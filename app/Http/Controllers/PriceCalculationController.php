@@ -39,7 +39,7 @@ class PriceCalculationController extends Controller
         $calc_price = new Price($course_number);
         // 料金を取得
         $price = $calc_price->calcPrice($enter_datetime_immutable, $leave_datetime_immutable);
-       
+        
         // 画面表示用のデータを作成
         $view_data = $calc_price->calcViewTime();
         // 滞在時間（画面表示用）
