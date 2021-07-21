@@ -22,10 +22,9 @@
         <p>
             <label>コースの種類
                 <select name="course">
-                    <option value="0">通常料金（入室から1時間）</option>
-                    <option value="1">3時間パック（入室から3時間）</option>
-                    <option value="2">5時間パック（入室から5時間）</option>
-                    <option value="3">8時間パック（入室から8時間）</option>
+                    @foreach($course_name as $number => $course)
+                    <option value="{{ $number }}">{{ $course['text'] }}</option>
+                    @endforeach
                 </select>
             </label>
         </p>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Config;
 use App\Models\Price;
 use App\Http\Requests\InputPriceDataRequest;
 
@@ -15,7 +16,15 @@ class PriceCalculationController extends Controller
      */
     public function showInput()
     {
-        return view('input');
+        // configから各コースの情報を取得
+        $config_course = Config::get('price.course');
+
+        // コース名と番号を取得
+        foreach ($config_course as $course){
+            $course_name[$course['number']]['text'] = $course['text'];
+        }
+
+        return view('input', ['course_name' => $course_name]);
     }
 
     /**
