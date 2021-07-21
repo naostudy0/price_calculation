@@ -8,30 +8,30 @@
 <main>
     <h1>料金計算結果</h1>
 
-    <p>入店日時：{{ $enter_datetime_immutable->format('Y/m/d H:i:s') }}</p>
-    <p>退店日時：{{ $leave_datetime_immutable->format('Y/m/d H:i:s') }}</p>
-    <p>コースの種類：{{ $view_data['text'] }}</p>
-    <p>コース終了日時：{{ $view_data['limit']->format('Y/m/d H:i:s') }}</p>
-    <p>利用時間：{{ $stay_time->format('%a日 %h時間 %i分%s秒') }}</p>
+    <p>入店日時：{{ $enter_datetime }}</p>
+    <p>退店日時：{{ $leave_datetime }}</p>
+    <p>コースの種類：{{ $usage_time['text'] }}</p>
+    <p>コース終了日時：{{ $usage_time['limit'] }}</p>
+    <p>利用時間：{{ $usage_time['stay'] }}</p>
 
-    @if(isset($view_data['extension']['total']))
+    @if(isset($usage_time['extension']))
     <p>延長時間合計：
-        {{ $view_data['extension']['day']['total'] }}日 
-        {{ $view_data['extension']['hour']['total'] }}時間 
-        {{ $view_data['extension']['minute']['total'] }}時間 
-        ({{ $view_data['extension']['total'] }}分)
+        {{ $usage_time['extension']['day']['total'] }}日 
+        {{ $usage_time['extension']['hour']['total'] }}時間 
+        {{ $usage_time['extension']['minute']['total'] }}時間 
+        ({{ $usage_time['extension']['total'] }}分)
     </p>
     <p>(通常延長時間)：
-        {{ $view_data['extension']['day']['normal'] }}日 
-        {{ $view_data['extension']['hour']['normal'] }}時間 
-        {{ $view_data['extension']['minute']['normal'] }}時間 
-        ({{ $view_data['extension']['normal'] }}分)
+        {{ $usage_time['extension']['day']['normal'] }}日 
+        {{ $usage_time['extension']['hour']['normal'] }}時間 
+        {{ $usage_time['extension']['minute']['normal'] }}時間 
+        ({{ $usage_time['extension']['normal'] }}分)
     </p>
     <p>(割増延長時間)：
-        {{ $view_data['extension']['day']['extra'] }}日 
-        {{ $view_data['extension']['hour']['extra'] }}時間 
-        {{ $view_data['extension']['minute']['extra'] }}時間 
-        ({{ $view_data['extension']['extra'] }}分)
+        {{ $usage_time['extension']['day']['extra'] }}日 
+        {{ $usage_time['extension']['hour']['extra'] }}時間 
+        {{ $usage_time['extension']['minute']['extra'] }}時間 
+        ({{ $usage_time['extension']['extra'] }}分)
     </p>
     @endif
 

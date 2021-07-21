@@ -36,21 +36,17 @@ class PriceCalculationController extends Controller
         $course_number = $request['course'];
 
         // 料金計算クラスをインスタンス化
-        $calc_price = new Price($course_number);
+        $price_model = new Price($course_number);
         // 料金を取得
-        $price = $calc_price->calcPrice($enter_datetime_immutable, $leave_datetime_immutable);
-        
-        // 画面表示用のデータを作成
-        $view_data = $calc_price->calcViewTime();
-        // 滞在時間（画面表示用）
-        $stay_time = $enter_datetime_immutable->diff($leave_datetime_immutable); 
+        $price = $price_model->calcPrice($enter_datetime_immutable, $leave_datetime_immutable);
+        // 画面表示用のデータを取得
+        $usage_time = $price_model->getUsageTime($enter_datetime_immutable, $leave_datetime_immutable);
 
         return view('result', [
-            'enter_datetime_immutable' => $enter_datetime_immutable,
-            'leave_datetime_immutable' => $leave_datetime_immutable,
+            'enter_datetime' => $enter_datetime_immutable->format('Y/m/d H:i:s'),
+            'leave_datetime' => $leave_datetime_immutable->format('Y/m/d H:i:s'),
             'price' => $price,
-            'view_data' => $view_data,
-            'stay_time' => $stay_time,
+            'usage_time' => $usage_time,
         ]);
     }
 }

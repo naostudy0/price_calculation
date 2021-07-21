@@ -190,38 +190,40 @@ class Price
     }
 
     /**
-     * 結果画面表示用のデータを返す
+     * 滞在時間やコース名など、画面表示用のデータを返す
      * 
      * @return array
      */
-    public function calcViewTime()
+    public function getUsageTime($enter_datetime_immutable, $leave_datetime_immutable)
     {
         // コース名
-        $view_data['text'] = $this->course['text'];
+        $usage_time['text'] = $this->course['text'];
         // コース終了日時
-        $view_data['limit'] = $this->course_limit_datetime_immutable;
+        $usage_time['limit'] = $this->course_limit_datetime_immutable->format('Y/m/d H:i:s');
+        // 滞在時間
+        $usage_time['stay'] = ($enter_datetime_immutable->diff($leave_datetime_immutable)->format('%a日 %h時間 %i分%s秒')); 
 
-        // 延長回数が設定されていなければ、コース情報のみを返す
+        // 延長回数が設定されていなければ、コース情報・滞在時間のみを返す
         if(!isset($this->extension_count)){
-            return $view_data;
+            return $usage_time;
         }
 
         // 通常料金の延長時間（分）
-        $view_data['extension']['normal'] = $this->extension_count['normal'] * 10;
+        $usage_time['extension']['normal'] = $this->extension_count['normal'] * 10;
         // 割増料金の延長時間（分）
-        $view_data['extension']['extra'] = $this->extension_count['extra'] * 10;
+        $usage_time['extension']['extra'] = $this->extension_count['extra'] * 10;
         // トータルの延長時間（分）
-        $view_data['extension']['total'] = $view_data['extension']['normal'] + $view_data['extension']['extra'];
+        $usage_time['extension']['total'] = $usage_time['extension']['normal'] + $usage_time['extension']['extra'];
 
         // 延長時間を分から日時分に変換
-        foreach($view_data['extension'] as $key => $value){
+        foreach($usage_time['extension'] as $key => $value){
             // 日
-            $view_data['extension']['day'][$key] = floor($value / 1440);
+            $usage_time['extension']['day'][$key] = floor($value / 1440);
             // 時
-            $view_data['extension']['hour'][$key] = floor(($value - $view_data['extension']['day'][$key] *1440) / 60);
+            $usage_time['extension']['hour'][$key] = floor(($value - $usage_time['extension']['day'][$key] *1440) / 60);
             // 分
-            $view_data['extension']['minute'][$key] = $value % 60;
+            $usage_time['extension']['minute'][$key] = $value % 60;
         }
-        return $view_data;
+        return $usage_time;
     }
 }
